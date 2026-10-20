@@ -42,6 +42,14 @@
     catch { return false; }
   }
   let hideAmounts = $state(savedPrivacyMode());
+  let theme = $state(typeof document !== 'undefined' && document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+
+  function toggleTheme() {
+    theme = theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#10131b' : '#f8f8f6');
+    try { localStorage.setItem('finance-bro-theme', theme); } catch { /* Storage may be disabled. */ }
+  }
 
   function togglePrivacyMode() {
     hideAmounts = !hideAmounts;
@@ -340,7 +348,18 @@
   <main id="inicio" class="main-content">
     <header class="topbar">
       <div class="breadcrumb">Finanças <span>/</span> <strong>{activePage === 'tags' ? 'Tags' : activePage === 'categories' ? 'Categorias' : 'Visão geral'}</strong></div>
-      <div class="top-actions"><span class="local-badge"><i></i> Ambiente local</span><button type="button" class="privacy-toggle" class:active={hideAmounts} aria-label={hideAmounts ? 'Mostrar valores' : 'Ocultar valores'} aria-pressed={hideAmounts} title={hideAmounts ? 'Mostrar valores' : 'Ocultar valores'} onclick={togglePrivacyMode}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/>{#if hideAmounts}<path d="M3 3 21 21" class="eye-slash"/>{/if}</svg></button><div class="font-size-control" role="group" aria-label={`Tamanho da fonte: ${fontScale}%`}><button type="button" aria-label="Diminuir fonte" title="Diminuir fonte" disabled={fontScale === fontScaleOptions[0]} onclick={() => changeFontScale(-1)}>A−</button><button type="button" aria-label="Aumentar fonte" title="Aumentar fonte" disabled={fontScale === fontScaleOptions[fontScaleOptions.length - 1]} onclick={() => changeFontScale(1)}>A+</button></div><div class="avatar small">N</div></div>
+      <div class="top-actions">
+        <span class="local-badge"><i></i> Ambiente local</span>
+        <button type="button" class="theme-toggle" class:active={theme === 'dark'} aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'} aria-pressed={theme === 'dark'} title={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'} onclick={toggleTheme}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            {#if theme === 'dark'}<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+            {:else}<path d="M20.2 15.1A8.5 8.5 0 0 1 8.9 3.8 8.5 8.5 0 1 0 20.2 15.1Z"/>{/if}
+          </svg>
+        </button>
+        <button type="button" class="privacy-toggle" class:active={hideAmounts} aria-label={hideAmounts ? 'Mostrar valores' : 'Ocultar valores'} aria-pressed={hideAmounts} title={hideAmounts ? 'Mostrar valores' : 'Ocultar valores'} onclick={togglePrivacyMode}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/>{#if hideAmounts}<path d="M3 3 21 21" class="eye-slash"/>{/if}</svg></button>
+        <div class="font-size-control" role="group" aria-label={`Tamanho da fonte: ${fontScale}%`}><button type="button" aria-label="Diminuir fonte" title="Diminuir fonte" disabled={fontScale === fontScaleOptions[0]} onclick={() => changeFontScale(-1)}>A−</button><button type="button" aria-label="Aumentar fonte" title="Aumentar fonte" disabled={fontScale === fontScaleOptions[fontScaleOptions.length - 1]} onclick={() => changeFontScale(1)}>A+</button></div>
+        <div class="avatar small">N</div>
+      </div>
     </header>
 
     {#if activePage === 'categories'}

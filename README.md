@@ -12,13 +12,15 @@ Documentação: [estado do projeto e próximos passos](docs/PROJECT_STATUS.md), 
 ## Começar
 
 1. Copie `.env.example` para `.env`. As credenciais são opcionais para abrir o app; são necessárias para conectar a Pluggy e usar a classificação com IA.
-2. Terminal 1: `cd backend && uv sync && uv run uvicorn app.main:app --reload --host 127.0.0.1`
-3. Terminal 2: `cd frontend && pnpm install && pnpm dev`
-4. Abra `http://localhost:5173`.
+2. Instale as dependências uma vez: `cd backend && uv sync`; depois `cd ../frontend && pnpm install`.
+3. Na raiz do repositório, execute `python3 dev.py`. O comando inicia backend e frontend e encerra ambos com `Ctrl+C`.
+4. Abra `http://127.0.0.1:5173`.
 
-A API fica em `http://localhost:8000/docs`. O banco é criado automaticamente em `backend/data/finance_bro.db`. O arquivo `.env` deve ficar na raiz do projeto.
+A API fica em `http://127.0.0.1:8000/docs`. O banco é criado automaticamente em `backend/data/finance_bro.db`. O arquivo `.env` deve ficar na raiz do projeto.
 
 Os botões `A−` e `A+` ao lado de **Ambiente local** ajustam a escala da interface entre 80% e 150%. A escolha fica salva neste navegador.
+
+O botão de lua/sol na barra superior alterna entre os temas claro e escuro. Na primeira visita, o site segue a preferência do sistema; depois guarda a escolha neste navegador.
 
 O botão de olho na barra superior ativa o modo público: saldos e valores monetários aparecem como `R$ •••••` (ou com o código da moeda da transação). O valor no formulário de nova transação também fica oculto enquanto o modo estiver ativo. Clique novamente para revelar os valores. A preferência fica salva neste navegador; ela altera apenas a exibição, sem remover dados do banco ou das respostas da API.
 

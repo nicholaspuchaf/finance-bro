@@ -44,7 +44,7 @@
     {#if type === 'area'}<path d={areaPath} fill={`url(#${id})`} />{/if}
     <path d={path} fill="none" stroke={accent} stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
     {#each coordinates as point}
-      <circle cx={point.x} cy={point.y} r={points.length > 20 ? 3 : 4} fill="#fff" stroke={accent} stroke-width="2">
+      <circle cx={point.x} cy={point.y} r={points.length > 20 ? 3 : 4} fill="var(--chart-point-fill, #fff)" stroke={accent} stroke-width="2">
         <title>{point.label}: {compactMoney(Number(point.value))}</title>
       </circle>
     {/each}
@@ -58,7 +58,7 @@
 
 <style>
   .trend-chart{display:block;width:100%;height:auto;overflow:visible}
-  .chart-grid-line{stroke:#e9e8ee;stroke-width:1;stroke-dasharray:4 6}
-  .chart-axis-label{fill:#9a99a4;font-size:14px;font-family:ui-sans-serif,system-ui,sans-serif}
+  .chart-grid-line{stroke:var(--chart-grid, #e9e8ee);stroke-width:1;stroke-dasharray:4 6}
+  .chart-axis-label{fill:var(--chart-label, #9a99a4);font-size:14px;font-family:ui-sans-serif,system-ui,sans-serif}
   .chart-x-label{font-size:14px}
 </style>
