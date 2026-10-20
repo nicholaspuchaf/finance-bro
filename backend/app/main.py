@@ -16,8 +16,9 @@ from app.migrations import initialize_database
 from app.models import Account, BankConnection, CategoryRule, Tag, Transaction, transaction_tags, utc_now
 from app.schemas import CATEGORIES, CategoryRuleCreate, ConnectionRead, TagCreate, TagRead, TransactionCreate, TransactionRead, TransactionUpdate
 from app.services.ai_classifier import AIConfigurationError, AIResponseError, OpenAIClassifier
+from app.services.analytics import analyze_transactions, shift_month
 from app.services.category_rules import assign_rule_category, name_key, transaction_name
-from app.services.finance import recurring_expenses, spending_summary
+from app.services.finance import EXCLUDED_CATEGORIES, recurring_expenses, spending_summary
 from app.services.pluggy import PluggyClient, PluggyConfigurationError, PluggyResponseError, transaction_values
 
 
@@ -77,6 +78,34 @@ async def public_config():
 @app.get("/api/summary")
 async def summary(session: Session = Depends(get_session)):
     return spending_summary(session.scalars(select(Transaction)).all(), date.today())
+
+
+@app.get("/api/analytics")
+async def analytics(
+    mode: str = Query(default="expenses", pattern="^(expenses|investments)$"),
+    months: int = Query(default=1, ge=1, le=24),
+    month: str | None = Query(default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$"),
+    category: str | None = None,
+    categories: list[str] = Query(default_factory=list),
+    session: Session = Depends(get_session),
+):
+    today = date.today()
+    first_month = shift_month(today.replace(day=1), 1 - months)
+    try:
+        selected_month = date.fromisoformat(f"{month}-01") if month else today.replace(day=1)
+    except ValueError as exc:
+        raise HTTPException(422, "Mês inválido.") from exc
+    if not first_month <= selected_month <= today.replace(day=1):
+        raise HTTPException(422, "O mês selecionado está fora do período de análise.")
+    available_categories = list(CATEGORY_GROUPS["Investments"]) if mode == "investments" else [name for name in CATEGORIES if name not in EXCLUDED_CATEGORIES]
+    selected_categories = list(dict.fromkeys([*categories, *([category] if category else [])]))
+    if any(name not in available_categories for name in selected_categories):
+        raise HTTPException(422, "Categoria inválida para esta análise.")
+    transactions = session.scalars(select(Transaction).where(Transaction.date >= first_month, Transaction.date <= today)).all()
+    result = analyze_transactions(transactions, today, months, mode, selected_month, set(selected_categories))
+    result["selected_categories"] = selected_categories
+    result["available_categories"] = available_categories
+    return result
 
 
 @app.get("/api/recurring")

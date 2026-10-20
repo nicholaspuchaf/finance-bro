@@ -2,6 +2,8 @@
 
 Gerenciador financeiro pessoal local. O frontend Svelte e o backend Python ficam separados; transações ficam em SQLite na máquina local.
 
+Documentação: [estado do projeto e próximos passos](docs/PROJECT_STATUS.md), [configuração do Meu Pluggy](docs/PLUGGY_SETUP.md) e [segurança e privacidade](docs/SECURITY.md).
+
 ## Requisitos
 
 - Node.js 20.19+ e pnpm
@@ -31,6 +33,8 @@ O botão de olho na barra superior ativa o modo público: saldos e valores monet
 ## Consulta e cálculo
 
 Busca, categoria, tag e intervalo de datas podem ser combinados. A lista carrega 50 itens por vez. Recorrências são sugestões baseadas no mesmo nome em dois meses e valores próximos; não geram lançamentos futuros. O resumo mensal conta débitos positivos confirmados em BRL, excluindo transferências, investimentos, pagamentos de fatura e estornos identificados. Lançamentos sem categoria ainda contam como despesa; revise os casos ambíguos. Transações em outras moedas aparecem na lista, mas não entram no total em BRL sem conversão.
+
+A página **Categorias** apresenta um dashboard independente da paginação da lista, começando pelo mês atual e permitindo análise de 1, 3, 6, 12 ou 24 meses. É possível alternar entre gastos e investimentos, marcar várias categorias para somar seus valores (por exemplo, `Food delivery` e `Eating out`), escolher o mês da visão diária quando o período inclui vários meses e trocar gráficos de colunas, linha ou área. O seletor mostra as categorias comuns; marque **Todas** para ver a lista completa. Sem categorias marcadas, a análise usa todas as categorias do modo escolhido. A visão diária também oferece valores por dia ou acumulados. Em investimentos, os gráficos representam aportes (saídas positivas classificadas na família Investments); as entradas relacionadas incluem resgates e proventos e aparecem separadas. O dashboard não calcula saldo ou rentabilidade da carteira. Valores ocultos pelo botão de olho também ficam ocultos nos gráficos e seus detalhes.
 
 ## Dados locais e backup
 

@@ -13,6 +13,7 @@ from app.main import app
 from app.models import Transaction
 from app.schemas import CategoryResult
 from app.services.ai_classifier import AIResponseError, OpenAIClassifier
+from app.services.analytics import shift_month
 from app.services.finance import recurring_expenses, spending_summary
 from app.services.pluggy import PluggyClient
 from app.migrations import initialize_database
@@ -115,6 +116,83 @@ def test_finance_rules_and_recurring():
     summary = spending_summary(rows, date(2026, 10, 19))
     assert summary["categories"] == [{"category": "Other", "amount": "32", "count": 1}]
     assert recurring_expenses(rows)[0]["months"] == 2
+
+
+def test_analytics_filters_months_categories_and_investment_cash_flows(client):
+    api, _ = client
+    today = date.today()
+    previous_month = shift_month(today, -1)
+
+    def add(day, amount, category):
+        response = api.post("/api/transactions", json={"date": day.isoformat(), "description": category, "amount": str(amount), "category": category})
+        assert response.status_code == 201
+
+    add(today, 50, "Groceries")
+    add(today, 20, "Housing")
+    add(previous_month, 30, "Groceries")
+    add(today, 500, "Transfers")
+    add(today, 100, "Fixed income")
+    add(today, -25, "Proceeds interests and dividends")
+
+    response = api.get("/api/analytics", params={"mode": "expenses", "months": 3, "month": previous_month.strftime("%Y-%m"), "category": "Groceries"})
+    assert response.status_code == 200
+    result = response.json()
+    assert Decimal(result["total"]) == 80
+    assert result["count"] == 2
+    assert result["selected_month"] == previous_month.strftime("%Y-%m")
+    assert Decimal(result["monthly"][-1]["amount"]) == 50
+    assert Decimal(result["monthly"][-2]["amount"]) == 30
+    assert Decimal(result["monthly"][0]["amount"]) == 0
+    assert Decimal(result["daily"][0]["amount"]) == 30
+    assert len(result["daily"]) >= 28
+    assert Decimal(result["daily"][-1]["amount"]) == 0
+    assert {item["category"]: Decimal(item["amount"]) for item in result["categories"]} == {"Groceries": 80, "Housing": 20}
+
+    investments = api.get("/api/analytics", params={"mode": "investments", "months": 3}).json()
+    assert Decimal(investments["total"]) == 100
+    assert Decimal(investments["inflows"]) == 25
+    assert investments["count"] == 1
+    assert investments["categories"][0]["category"] == "Fixed income"
+    assert Decimal(investments["categories"][0]["amount"]) == 100
+    assert api.get("/api/analytics", params={"months": 25}).status_code == 422
+    assert api.get("/api/analytics", params={"mode": "investments", "category": "Groceries"}).status_code == 422
+    assert api.get("/api/analytics", params={"month": "2099-01"}).status_code == 422
+
+
+def test_analytics_aggregates_multiple_selected_categories(client):
+    api, _ = client
+    today = date.today()
+    previous_month = shift_month(today, -1)
+    for day, amount, category in [
+        (today, 20, "Eating out"),
+        (today, 30, "Food delivery"),
+        (previous_month, 5, "Food delivery"),
+        (today, 100, "Groceries"),
+        (today, 80, "Fixed income"),
+        (today, 40, "Mutual funds"),
+    ]:
+        assert api.post("/api/transactions", json={"date": day.isoformat(), "description": category, "amount": str(amount), "category": category}).status_code == 201
+
+    params = [("mode", "expenses"), ("months", "3"), ("categories", "Food delivery"), ("categories", "Eating out")]
+    response = api.get("/api/analytics", params=params)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["selected_categories"] == ["Food delivery", "Eating out"]
+    assert Decimal(result["total"]) == 55
+    assert result["count"] == 3
+    assert Decimal(result["monthly"][-1]["amount"]) == 50
+    assert Decimal(result["monthly"][-2]["amount"]) == 5
+    assert Decimal(result["daily"][today.day - 1]["amount"]) == 50
+    assert "Food delivery" in result["available_categories"]
+    assert "Eating out" in result["available_categories"]
+    assert "Transfers" not in result["available_categories"]
+
+    investments = api.get("/api/analytics", params=[("mode", "investments"), ("categories", "Fixed income"), ("categories", "Mutual funds")]).json()
+    assert Decimal(investments["total"]) == 120
+    assert investments["count"] == 2
+    assert "Food delivery" not in investments["available_categories"]
+    assert Decimal(api.get("/api/analytics").json()["total"]) == 150
+    assert api.get("/api/analytics", params=[("categories", "Food delivery"), ("categories", "Fixed income")]).status_code == 422
 
 
 def test_mocked_pluggy_sync_reuses_transactions_and_preserves_category(client, monkeypatch):

@@ -1,6 +1,7 @@
 <script>
   import { onMount, tick } from 'svelte';
   import { PluggyConnect } from 'pluggy-connect-sdk';
+  import AnalyticsPage from './AnalyticsPage.svelte';
 
   let transactions = $state([]);
   let connections = $state([]);
@@ -126,10 +127,13 @@
     refresh();
     async function syncPage() {
       currentHash = window.location.hash;
-      activePage = currentHash === '#tags' ? 'tags' : 'overview';
-      if (activePage === 'overview' && ['#transacoes', '#categorias'].includes(window.location.hash)) {
+      activePage = currentHash === '#tags' ? 'tags' : currentHash === '#categorias' ? 'categories' : 'overview';
+      if (activePage === 'overview' && window.location.hash === '#transacoes') {
         await tick();
         document.querySelector(window.location.hash)?.scrollIntoView();
+      } else if (activePage !== 'overview') {
+        await tick();
+        window.scrollTo(0, 0);
       }
     }
     syncPage();
@@ -313,9 +317,9 @@
     <a class="brand" href="/" aria-label="Finance Bro início"><span class="brand-mark">f</span><span>finance<span class="brand-light">bro</span></span></a>
     <div class="side-label">VISÃO GERAL</div>
     <nav>
-      <a class="nav-item" class:active={activePage === 'overview' && !['#transacoes', '#categorias'].includes(currentHash)} href="#inicio"><span class="nav-icon">▦</span> Início</a>
+      <a class="nav-item" class:active={activePage === 'overview' && currentHash !== '#transacoes'} href="#inicio"><span class="nav-icon">▦</span> Início</a>
       <a class="nav-item" class:active={currentHash === '#transacoes'} href="#transacoes"><span class="nav-icon">↕</span> Transações <span class="nav-count">{transactions.length}</span></a>
-      <a class="nav-item" class:active={currentHash === '#categorias'} href="#categorias"><span class="nav-icon">◫</span> Categorias</a>
+      <a class="nav-item" class:active={activePage === 'categories'} href="#categorias"><span class="nav-icon">◫</span> Categorias</a>
       <a class="nav-item" class:active={activePage === 'tags'} href="#tags"><span class="nav-icon">◇</span> Tags <span class="nav-count">{tags.length}</span></a>
     </nav>
     <div class="side-label bank-label">CONTAS</div>
@@ -335,11 +339,13 @@
 
   <main id="inicio" class="main-content">
     <header class="topbar">
-      <div class="breadcrumb">Finanças <span>/</span> <strong>{activePage === 'tags' ? 'Tags' : 'Visão geral'}</strong></div>
+      <div class="breadcrumb">Finanças <span>/</span> <strong>{activePage === 'tags' ? 'Tags' : activePage === 'categories' ? 'Categorias' : 'Visão geral'}</strong></div>
       <div class="top-actions"><span class="local-badge"><i></i> Ambiente local</span><button type="button" class="privacy-toggle" class:active={hideAmounts} aria-label={hideAmounts ? 'Mostrar valores' : 'Ocultar valores'} aria-pressed={hideAmounts} title={hideAmounts ? 'Mostrar valores' : 'Ocultar valores'} onclick={togglePrivacyMode}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/>{#if hideAmounts}<path d="M3 3 21 21" class="eye-slash"/>{/if}</svg></button><div class="font-size-control" role="group" aria-label={`Tamanho da fonte: ${fontScale}%`}><button type="button" aria-label="Diminuir fonte" title="Diminuir fonte" disabled={fontScale === fontScaleOptions[0]} onclick={() => changeFontScale(-1)}>A−</button><button type="button" aria-label="Aumentar fonte" title="Aumentar fonte" disabled={fontScale === fontScaleOptions[fontScaleOptions.length - 1]} onclick={() => changeFontScale(1)}>A+</button></div><div class="avatar small">N</div></div>
     </header>
 
-    {#if activePage === 'tags'}
+    {#if activePage === 'categories'}
+      <AnalyticsPage {hideAmounts} />
+    {:else if activePage === 'tags'}
     <div class="page-content tag-page">
       <section class="welcome-row">
         <div><div class="eyebrow">ORGANIZAÇÃO PESSOAL</div><h1>Tags</h1><p class="subtitle">Crie etiquetas para organizar transações além das categorias da Pluggy.</p></div>
@@ -435,7 +441,7 @@
         </article>
 
         <div class="right-column">
-          <article class="panel categories-panel" id="categorias"><div class="panel-heading compact"><div><h2>Por categoria</h2><p>Gastos confirmados este mês</p></div></div>
+          <article class="panel categories-panel"><div class="panel-heading compact"><div><h2>Por categoria</h2><p>Gastos confirmados este mês</p></div></div>
             {#if summary.categories.length}<div class="category-breakdown">{#each summary.categories.filter((item) => Number(item.amount) > 0).slice(0, 5) as item}<div class="category-line"><div class="category-line-top"><span><i class="category-bullet" style={`--bullet:${['#d87f65','#8b80c9','#58a58b','#d7a64f','#6293bb'][summary.categories.indexOf(item) % 5]}`}></i>{item.category}</span><strong>{formatMoney(Number(item.amount))}</strong></div><div class="progress-track"><div class="progress-fill" style={`width:${Math.min(100, totalSpent ? Number(item.amount) / totalSpent * 100 : 0)}%;--fill:${['#d87f65','#8b80c9','#58a58b','#d7a64f','#6293bb'][summary.categories.indexOf(item) % 5]}`}></div></div></div>{/each}</div>
             {:else}<div class="mini-empty"><span class="mini-empty-icon">◫</span><span>Suas categorias aparecerão aqui<br />quando houver transações.</span></div>{/if}
             <a class="panel-link" href="#transacoes">Explorar categorias <span>→</span></a>
