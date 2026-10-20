@@ -12,6 +12,12 @@ As categorias recebidas da Pluggy são aproveitadas na importação. Alteraçõe
 
 A interface tem lista paginada, busca e filtros por categoria/tag/datas; edição e lançamento manual; página de tags com contagem; sugestões de recorrência; resumo mensal; regras para reaplicar categoria por nome; dashboard de gastos e aportes em investimentos com até 24 meses, múltiplas categorias agregadas, evolução diária e mensal e gráficos alternáveis. O botão de privacidade só mascara os valores renderizados; a API e os dados locais continuam contendo os valores originais.
 
+O frontend foi reorganizado em páginas distintas: **Início** compõe os widgets da visão geral e até 20 transações recentes; **Transações** apresenta apenas o histórico com filtros e carregamento de 50 itens por vez; **Dashboards** substitui o antigo nome Categorias; **Tags** mantém a gestão de etiquetas. `TransactionsTable.svelte`, `CategorySelector.svelte` e `CategorySelection.svelte` são compartilhados. Os demais blocos do Início foram extraídos para widgets independentes; a composição e as propriedades estão descritas em [frontend/README.md](../frontend/README.md).
+
+Transações e Dashboards permitem combinar categorias e macro-categorias e limpar as seleções. As macro-categorias correspondem aos grupos da taxonomia Pluggy mantida no backend, não à lista de 15 categorias comuns. As seleções são unidas sem dupla contagem; no dashboard, composição, totais e séries diária/mensal respeitam os mesmos filtros. A taxonomia no checkout tem 134 categorias e 24 grupos; os identificadores permanecem canônicos, com rótulos traduzidos na interface.
+
+Há temas claro/escuro e i18n em `pt-BR`/`en-US`, com catálogos JSON, interpolação, plurais e formatação por `Intl`. A bandeira é plana, retangular, sem contorno e fica imediatamente à esquerda do botão de tema. Idioma, tema, privacidade e escala de fonte persistem no navegador. A navegação continua por fragmentos (`#inicio`, `#transacoes`, `#dashboards`, `#tags`), com compatibilidade para o antigo `#categorias`.
+
 Existem testes automatizados de backend em `backend/tests/`, scripts de verificação de frontend e um script de backup consistente em `backend/scripts/backup.py`. Este documento não registra uma nova execução desses testes.
 
 ## Trabalho ainda pendente

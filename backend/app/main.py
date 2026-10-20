@@ -193,6 +193,8 @@ async def delete_tag(tag_id: int, session: Session = Depends(get_session)):
 async def list_transactions(
     search: str = "",
     category: str = "",
+    categories: list[str] = Query(default_factory=list),
+    macro_categories: list[str] = Query(default_factory=list),
     tag_id: int | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
@@ -207,8 +209,15 @@ async def list_transactions(
         raise HTTPException(422, "A data inicial deve ser anterior à data final.")
     if search:
         query = query.where(or_(Transaction.description.ilike(f"%{search}%"), Transaction.merchant.ilike(f"%{search}%")))
+    category_members = set(categories)
     if category:
-        query = query.where(Transaction.category == category)
+        category_members.add(category)
+    for name in macro_categories:
+        if name not in MACRO_CATEGORIES:
+            raise HTTPException(422, "Macro-categoria inválida.")
+        category_members.update(MACRO_CATEGORIES[name])
+    if category_members:
+        query = query.where(Transaction.category.in_(category_members))
     if date_from:
         query = query.where(Transaction.date >= date_from)
     if date_to:

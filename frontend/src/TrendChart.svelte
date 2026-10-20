@@ -1,5 +1,6 @@
 <script>
-  let { points = [], type = 'bar', accent = '#d97861', id = 'trend', hideAmounts = false, label = 'Evolução' } = $props();
+  import { t, currency } from './i18n/index.js';
+  let { points = [], type = 'bar', accent = '#d97861', id = 'trend', hideAmounts = false, label = '' } = $props();
 
   const left = 66;
   const right = 882;
@@ -17,12 +18,11 @@
   let labelStep = $derived(Math.max(1, Math.ceil(points.length / 7)));
 
   function compactMoney(value) {
-    if (hideAmounts) return 'R$ •••';
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact', maximumFractionDigits: 1 }).format(value);
+    return $currency(value, { hidden: hideAmounts, notation: 'compact', maximumFractionDigits: 1 });
   }
 </script>
 
-<svg class="trend-chart" viewBox="0 0 900 270" role="img" aria-label={label}>
+<svg class="trend-chart" viewBox="0 0 900 270" role="img" aria-label={label || $t('analytics.trend')}>
   <defs>
     <linearGradient id={id} x1="0" x2="0" y1="0" y2="1">
       <stop offset="0%" stop-color={accent} stop-opacity="0.24" />

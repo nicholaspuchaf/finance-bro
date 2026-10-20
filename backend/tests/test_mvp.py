@@ -55,6 +55,38 @@ def test_validation_filters_and_pagination(client):
     assert api.patch(f"/api/transactions/{rows[0]['id']}", json={"category": None}).status_code == 422
 
 
+@pytest.mark.parametrize(
+    ("params", "expected_days"),
+    [
+        ([("categories", "Food delivery"), ("categories", "Eating out")], [7, 3, 2]),
+        ([("categories", "Food and drinks")], [1]),
+        ([("macro_categories", "Food and drinks")], [7, 3, 2, 1]),
+        ([("macro_categories", "Food and drinks"), ("macro_categories", "Services")], [7, 6, 3, 2, 1]),
+        ([("macro_categories", "Food and drinks"), ("categories", "Food delivery"), ("categories", "Food delivery")], [7, 3, 2, 1]),
+        ([("category", "Groceries"), ("categories", "Food delivery")], [8, 7, 4, 2]),
+        ([("categories", "Pharmacy")], []),
+        ([("macro_categories", "Food and drinks"), ("limit", "2"), ("offset", "2")], [2, 1]),
+        ([("macro_categories", "Food and drinks"), ("macro_categories", "Travel"), ("categories", "Groceries"), ("date_from", "2026-10-02"), ("date_to", "2026-10-05"), ("work_tag", "true")], [5, 4, 2]),
+        ([], [8, 7, 6, 5, 4, 3, 2, 1]),
+    ],
+)
+def test_transaction_category_selection_filters_sql_before_pagination(client, params, expected_days):
+    api, _ = client
+    tag_id = api.post("/api/tags", json={"name": "Work"}).json()["id"]
+    categories = ["Food and drinks", "Food delivery", "Eating out", "Groceries", "Accommodation", "Internet", "Food delivery", "Groceries"]
+    for day, category in enumerate(categories, 1):
+        assert api.post("/api/transactions", json={"date": f"2026-10-{day:02}", "description": f"Movement {day}", "amount": "10", "category": category, "tag_ids": [tag_id] if day in (2, 4, 5, 7) else []}).status_code == 201
+    query = [("tag_id", str(tag_id)) if key == "work_tag" else (key, value) for key, value in params]
+    response = api.get("/api/transactions", params=query)
+    assert response.status_code == 200
+    assert [row["description"] for row in response.json()] == [f"Movement {day}" for day in expected_days]
+
+
+def test_transaction_macro_filter_rejects_unknown_group(client):
+    api, _ = client
+    assert api.get("/api/transactions", params={"macro_categories": "Inventada"}).status_code == 422
+
+
 def test_tag_management_assignment_counts_and_filter(client):
     api, _ = client
     first = api.post("/api/tags", json={"name": "  Viagem  "})

@@ -116,3 +116,14 @@ latest binary's recommended copy:
 Both are idempotent: re-runs replace the block delimited by the ai-memory
 start/end HTML-comment markers, without disturbing the rest of the file.
 <!-- ai-memory:end -->
+
+## Convenções do frontend
+
+- Manter as páginas Início, Transações, Dashboards e Tags distintas. O Início compõe a visão geral com até 20 transações recentes; Transações mostra a lista completa, com filtros e carregamento de 50 itens por vez.
+- Montar as páginas a partir de componentes e widgets reutilizáveis. Uma funcionalidade compartilhada deve ter uma implementação como fonte da verdade; evoluir o componente existente em vez de copiar seu markup, comportamento ou estilos para outra página. Consulte `frontend/README.md`.
+- Reutilizar `TransactionsTable.svelte` nos modos resumido e completo, e `CategorySelector.svelte`/`CategorySelection.svelte` em Transações e Dashboards. Os filtros de uma instância não devem contaminar as outras.
+- Preservar os identificadores canônicos da Pluggy no banco, nas regras e nas requisições. Traduzir somente os rótulos. A fonte da taxonomia é `backend/app/categories.py`, exposta por `/api/config`; os tópicos são os grupos dessa taxonomia. A lista curada de 15 categorias comuns não define macro-categorias.
+- Categorias individuais filtram por correspondência exata; macro-categorias incluem o grupo e suas subcategorias. Combinar seleções por união, sem duplicar transações. Aplicar os mesmos filtros a todos os totais e gráficos do dashboard e preservar os filtros ao paginar Transações. Não desativar opções do seletor conforme o modo da análise.
+- Adicionar os textos da interface aos catálogos i18n `pt-BR` e `en-US`, incluindo acessibilidade, avisos e rótulos de categorias. Respeitar o idioma na formatação, sem converter moedas nem traduzir dados cadastrados pelo usuário. Manter a bandeira plana, retangular e sem contorno imediatamente à esquerda do seletor de tema.
+- Preservar os temas claro e escuro, o modo público de ocultação de valores e a escala proporcional de fonte nos widgets reutilizados. Preferências visuais e idioma ficam no navegador. Ocultação de valores é apenas apresentação, não controle de acesso.
+- Ao alterar filtros, paginação, categorias ou i18n, preservar as verificações pertinentes de frontend (`pnpm test`, `pnpm check`, `pnpm build`) e os testes de API quando houver mudança no contrato ou no cálculo.

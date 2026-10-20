@@ -1,0 +1,107 @@
+// Presentation only: keys are the canonical Pluggy category/group names.
+// Set enabled=false to keep just the generic mark, or change a mapping below.
+export const categoryIconConfig = {
+  enabled: true,
+  fallback: 'default',
+  groups: {
+    Income: 'income',
+    'Loans and Financing': 'wallet',
+    Investments: 'trend',
+    'Same person transfer': 'transfer',
+    Transfers: 'transfer',
+    'Legal obligations': 'scales',
+    Services: 'tools',
+    Shopping: 'bag',
+    Cashback: 'refund',
+    'Digital services': 'screen',
+    Groceries: 'basket',
+    'Food and drinks': 'utensils',
+    Travel: 'plane',
+    Donations: 'heart',
+    Gambling: 'dice',
+    Taxes: 'receipt',
+    'Bank fees': 'bank',
+    Housing: 'home',
+    Healthcare: 'health',
+    Transportation: 'car',
+    Insurance: 'shield',
+    Leisure: 'ticket',
+    Other: 'default',
+    Uncategorized: 'default',
+  },
+  categories: {
+    'Food delivery': 'delivery',
+    'Eating out': 'utensils',
+    Education: 'book',
+    'Online Courses': 'book',
+    University: 'book',
+    School: 'book',
+    Kindergarten: 'book',
+    Utilities: 'plug',
+    Electricity: 'bolt',
+    Water: 'droplet',
+    Gas: 'flame',
+    Internet: 'wifi',
+    Mobile: 'phone',
+    TV: 'screen',
+    Pharmacy: 'pill',
+    'Credit card payment': 'card',
+    'Debt card': 'card',
+    'Gas stations': 'fuel',
+    'Taxi and ride-hailing': 'car',
+    'Public transportation': 'bus',
+    Bicycle: 'bicycle',
+    Accommodation: 'bed',
+    'Health insurance': 'health',
+  },
+};
+
+// Small, monochrome SVG paths on a shared 24×24 grid. No font or icon library.
+// Add/replace artwork here without changing the table, categories or requests.
+export const categoryIconPaths = {
+  default: ['M20 12a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z', 'M4 12h16a8 8 0 0 1-16 0Z'],
+  basket: ['m8 4-4 6m12-6 4 6M3 10h18l-2 10H5L3 10Zm6 4v3m6-3v3'],
+  utensils: ['M5 3v6m3-6v6M2 3v6a3 3 0 0 0 6 0M5 12v9M20 3c-4 2-5 5-5 9h5m0-9v18'],
+  delivery: ['M3 8h11v10H3V8Zm11 4h4l3 4v2h-7M1 4h8M1 12h4m2 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm13 0a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z'],
+  home: ['m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7'],
+  health: ['M9 3h6v6h6v6h-6v6H9v-6H3V9h6V3Z'],
+  bag: ['M4 7h16l1 14H3L4 7Zm4 0V6a4 4 0 0 1 8 0v1'],
+  car: ['m5 10 2-6h10l2 6M3 10h18v8H3v-8Zm2 8v3m14-3v3M6 14h2m8 0h2'],
+  plane: ['m21 3-6 8 3 8-2 2-5-7-5 4-3-1 5-6-5-5 2-2 7 3 7-6 2 1Z'],
+  income: ['M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5'],
+  transfer: ['M3 7h17m-4-4 4 4-4 4M21 17H4m4-4-4 4 4 4'],
+  trend: ['M3 20V4m0 16h18M7 15l5-5 4 3 5-8m-5 0h5v5'],
+  wallet: ['M20 8V5H6a3 3 0 0 0 0 6h15v10H6a3 3 0 0 1-3-3V8m18 6h-5v4h5m-3-2h.01'],
+  scales: ['M12 3v17m-5 1h10M4 7h16M6 7l-4 8h8L6 7Zm12 0-4 8h8l-4-8Z'],
+  tools: ['M14 6a5 5 0 0 0-6 6l-5 5a2 2 0 0 0 4 4l5-5a5 5 0 0 0 6-6l-4 2-3-3 3-3Z'],
+  refund: ['M4 10a8 8 0 1 1 1 8M4 5v5h5M12 8v8m3-6h-4a2 2 0 0 0 0 4h2a2 2 0 0 0 0-4'],
+  screen: ['M3 4h18v13H3V4Zm5 17h8m-4-4v4'],
+  heart: ['M20 5a5 5 0 0 0-8 1 5 5 0 0 0-8-1c-5 5 3 11 8 15 5-4 13-10 8-15Z'],
+  dice: ['M4 3h16a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1ZM7 7h.01M17 7h.01M12 12h.01M7 17h.01M17 17h.01'],
+  receipt: ['M5 3h14v18l-3-2-4 2-4-2-3 2V3Zm4 5h6m-6 4h6m-6 4h3'],
+  bank: ['m3 8 9-5 9 5H3Zm2 3v7m7-7v7m7-7v7M3 21h18'],
+  shield: ['M12 3 3 6v6c0 5 5 8 9 10 4-2 9-5 9-10V6l-9-3Zm-4 9 3 3 5-6'],
+  ticket: ['M3 5h18v5a2 2 0 0 0 0 4v5H3v-5a2 2 0 0 0 0-4V5Zm12 3v1m0 3v1m0 3v1'],
+  book: ['M12 5C9 3 6 3 3 4v15c3-1 6-1 9 1m0-15c3-2 6-2 9-1v15c-3-1-6-1-9 1V5Z'],
+  plug: ['M8 3v5m8-5v5M6 8h12v3a6 6 0 0 1-12 0V8Zm6 9v4'],
+  bolt: ['m13 2-9 12h7l-1 8L21 9h-8V2Z'],
+  droplet: ['M12 3c-3 5-7 8-7 12a7 7 0 0 0 14 0c0-4-4-7-7-12Zm-3 13a3 3 0 0 0 3 3'],
+  flame: ['M13 3c1 6-4 6-4 10-2-1-2-3-2-4-6 7-2 12 5 12 9 0 11-10 1-18Z'],
+  wifi: ['M2 8a17 17 0 0 1 20 0M5 12a12 12 0 0 1 14 0m-11 4a7 7 0 0 1 8 0m-4 4h.01'],
+  phone: ['M7 2h10a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Zm3 3h4m-2 14h.01'],
+  pill: ['m9 4-5 5a6 6 0 0 0 9 9l5-5a6 6 0 0 0-9-9Zm-2 3 10 10'],
+  card: ['M3 5h18v14H3V5Zm0 5h18M6 15h4'],
+  fuel: ['M4 21V4h10v17M4 11h10M2 21h14M14 8h2v9a2 2 0 0 0 4 0V8l-3-3m1 1-1 3 3 2'],
+  bus: ['M5 18V5c0-3 14-3 14 0v13H5Zm0-7h14m-7-7v7M7 18v3m10-3v3M8 15h.01m8 0h.01'],
+  bicycle: ['M9 17a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm14 0a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM5 17l5-9 5 9H5Zm10 0 3-12h-3M8 5h4'],
+  bed: ['M3 19V5m0 10h18v4M3 9h5a4 4 0 0 1 4 4v2m0-6h6a3 3 0 0 1 3 3v3M6 9v3'],
+};
+
+export function resolveCategoryIcon(category, groups = [], enabled = categoryIconConfig.enabled) {
+  if (!enabled) return categoryIconConfig.fallback;
+  const group = groups.find((item) => item.categories.includes(category));
+  const name = categoryIconConfig.categories[category]
+    || categoryIconConfig.groups[category]
+    || categoryIconConfig.groups[group?.name];
+  return Object.hasOwn(categoryIconPaths, name) ? name : categoryIconConfig.fallback;
+}
