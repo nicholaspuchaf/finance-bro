@@ -2,6 +2,8 @@
   import { onMount, tick } from 'svelte';
   import { PluggyConnect } from 'pluggy-connect-sdk';
   import AnalyticsPage from './AnalyticsPage.svelte';
+  import CategorySelector from './CategorySelector.svelte';
+  import { COMMON_CATEGORY_NAMES } from './categoryOptions.js';
 
   let transactions = $state([]);
   let connections = $state([]);
@@ -71,12 +73,7 @@
   }
   const dateFormat = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' });
   const categoryIcons = { 'Food and drinks': '◒', 'Groceries': '◒', 'Transportation': '↗', 'Housing': '⌂', 'Healthcare': '+', 'Education': '▤', 'Leisure': '✳', 'Shopping': '◇', 'Services': '▣', 'Transfers': '⇄', 'Income': '↙', 'Investments': '⌁', 'Other': '·', 'Uncategorized': '?' };
-  const commonCategoryNames = [
-    'Uncategorized', 'Groceries', 'Food and drinks', 'Eating out', 'Shopping',
-    'Transportation', 'Housing', 'Utilities', 'Healthcare', 'Education',
-    'Travel', 'Transfers', 'Income', 'Investments', 'Other',
-  ];
-  const commonCategories = $derived(commonCategoryNames.filter((category) => config.categories.includes(category)));
+  const commonCategories = $derived(COMMON_CATEGORY_NAMES.filter((category) => config.categories.includes(category)));
 
   async function api(path, options = {}) {
     const response = await fetch(path, { ...options, headers: { 'Content-Type': 'application/json', ...options.headers } });
@@ -134,8 +131,11 @@
     document.documentElement.style.setProperty('--interface-scale', String(fontScale / 100));
     refresh();
     async function syncPage() {
+      if (window.location.hash === '#categorias') {
+        window.history.replaceState(null, '', '#dashboards');
+      }
       currentHash = window.location.hash;
-      activePage = currentHash === '#tags' ? 'tags' : currentHash === '#categorias' ? 'categories' : 'overview';
+      activePage = currentHash === '#tags' ? 'tags' : currentHash === '#dashboards' ? 'dashboards' : 'overview';
       if (activePage === 'overview' && window.location.hash === '#transacoes') {
         await tick();
         document.querySelector(window.location.hash)?.scrollIntoView();
@@ -327,7 +327,7 @@
     <nav>
       <a class="nav-item" class:active={activePage === 'overview' && currentHash !== '#transacoes'} href="#inicio"><span class="nav-icon">▦</span> Início</a>
       <a class="nav-item" class:active={currentHash === '#transacoes'} href="#transacoes"><span class="nav-icon">↕</span> Transações <span class="nav-count">{transactions.length}</span></a>
-      <a class="nav-item" class:active={activePage === 'categories'} href="#categorias"><span class="nav-icon">◫</span> Categorias</a>
+      <a class="nav-item" class:active={activePage === 'dashboards'} href="#dashboards"><span class="nav-icon">◫</span> Dashboards</a>
       <a class="nav-item" class:active={activePage === 'tags'} href="#tags"><span class="nav-icon">◇</span> Tags <span class="nav-count">{tags.length}</span></a>
     </nav>
     <div class="side-label bank-label">CONTAS</div>
@@ -347,7 +347,7 @@
 
   <main id="inicio" class="main-content">
     <header class="topbar">
-      <div class="breadcrumb">Finanças <span>/</span> <strong>{activePage === 'tags' ? 'Tags' : activePage === 'categories' ? 'Categorias' : 'Visão geral'}</strong></div>
+      <div class="breadcrumb">Finanças <span>/</span> <strong>{activePage === 'tags' ? 'Tags' : activePage === 'dashboards' ? 'Dashboards' : 'Visão geral'}</strong></div>
       <div class="top-actions">
         <span class="local-badge"><i></i> Ambiente local</span>
         <button type="button" class="theme-toggle" class:active={theme === 'dark'} aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'} aria-pressed={theme === 'dark'} title={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'} onclick={toggleTheme}>
@@ -362,8 +362,8 @@
       </div>
     </header>
 
-    {#if activePage === 'categories'}
-      <AnalyticsPage {hideAmounts} />
+    {#if activePage === 'dashboards'}
+      <AnalyticsPage {hideAmounts} {tags} categories={config.categories} categoryGroups={config.category_groups} />
     {:else if activePage === 'tags'}
     <div class="page-content tag-page">
       <section class="welcome-row">
@@ -422,16 +422,7 @@
           <div class="panel-heading"><div><h2>Transações recentes</h2><p>Seus movimentos financeiros em um só lugar.</p></div><div><button class="text-button" onclick={classifyBatch} disabled={busy || !config.ai_configured || !uncategorized}>Classificar até 10 com IA ✳</button><button class="text-button" onclick={refresh}>Atualizar <span>↻</span></button></div></div>
           <div class="table-tools">
             <label class="search-field"><span>⌕</span><input aria-label="Buscar transações" placeholder="Buscar transações..." bind:value={search} /></label>
-            <div class="category-filter-control"><label class="select-wrap"><span>Categoria:</span><select bind:value={categoryFilter}>
-              <option value="">Qualquer categoria</option>
-              {#if !showAllFilterCategories && categoryFilter && !commonCategories.includes(categoryFilter)}<option value={categoryFilter}>{categoryFilter}</option>{/if}
-              {#if showAllFilterCategories}
-                {#each config.category_groups as group}<optgroup label={group.name}>{#each group.categories as category}<option value={category}>{category}</option>{/each}</optgroup>{/each}
-              {:else}
-                {#each commonCategories as category}<option value={category}>{category}</option>{/each}
-              {/if}
-            </select><span class="select-arrow">⌄</span></label>
-            <label class="category-all-toggle"><input type="checkbox" bind:checked={showAllFilterCategories} /> Todas</label></div>
+            <CategorySelector categories={config.categories} categoryGroups={config.category_groups} value={categoryFilter} all={showAllFilterCategories} label="Categoria:" placeholder="Qualquer categoria" ariaLabel="Filtrar por categoria" onselect={(value) => categoryFilter = value} onallchange={(checked) => showAllFilterCategories = checked} />
             <label class="select-wrap"><span>Tag:</span><select bind:value={tagFilter}><option value="">Todas</option>{#each tags as tag}<option value={tag.id}>{tag.name}</option>{/each}</select><span class="select-arrow">⌄</span></label>
             <label class="date-filter">De <input aria-label="Data inicial" type="date" bind:value={dateFrom} /></label><label class="date-filter">Até <input aria-label="Data final" type="date" bind:value={dateTo} /></label>
           </div>
@@ -442,15 +433,7 @@
               <article class="transaction-row">
                 <div class="merchant-icon" class:income={Number(transaction.amount) < 0}>{categoryIcons[transaction.category] || '·'}</div>
                 <div class="transaction-info"><strong>{transaction.merchant || transaction.description}</strong><span>{transaction.description} <i>·</i> {dateFormat.format(new Date(`${transaction.date}T12:00:00`))}{transaction.classification_reason ? ` · IA: ${transaction.classification_reason}` : ''}</span><div class="transaction-tags">{#each transaction.tags as tag}<span class="tag-pill small">◇ {tag.name}</span>{/each}<details class="tag-picker"><summary>＋ Tags</summary><div class="tag-picker-menu">{#each tags as tag}<label><input type="checkbox" checked={transaction.tags.some((assigned) => assigned.id === tag.id)} onchange={() => toggleTag(transaction, tag.id)} />{tag.name}</label>{:else}<span>Crie uma tag para começar.</span>{/each}<a href="#tags">Gerenciar tags →</a></div></details></div></div>
-                <div class="transaction-category"><div class="category-select-line"><select aria-label={`Categoria de ${transaction.description}`} value={transaction.category} onchange={(event) => setCategory(transaction, event.currentTarget.value)}>
-                  {#if !expandedCategoryIds[transaction.id] && !commonCategories.includes(transaction.category)}<option value={transaction.category}>{transaction.category}</option>{/if}
-                  {#if expandedCategoryIds[transaction.id] && !config.categories.includes(transaction.category)}<option value={transaction.category}>{transaction.category}</option>{/if}
-                  {#if expandedCategoryIds[transaction.id]}
-                    {#each config.category_groups as group}<optgroup label={group.name}>{#each group.categories as category}<option value={category}>{category}</option>{/each}</optgroup>{/each}
-                  {:else}
-                    {#each commonCategories as category}<option value={category}>{category}</option>{/each}
-                  {/if}
-                </select><label class="category-all-toggle"><input type="checkbox" checked={Boolean(expandedCategoryIds[transaction.id])} onchange={(event) => expandedCategoryIds[transaction.id] = event.currentTarget.checked} /> Todas</label></div><small class="source-label" class:ai-source={transaction.category_source === 'ai'}>{transaction.category_source === 'pluggy' ? 'Classificada pela Pluggy' : transaction.category_source === 'rule' ? 'Regra por nome' : transaction.category_source === 'ai' ? `IA · ${Math.round((transaction.category_confidence || 0) * 100)}%` : transaction.category_source === 'manual' ? 'Editada por você' : transaction.pending ? 'Pendente' : ''}</small></div>
+                <div class="transaction-category"><CategorySelector categories={config.categories} categoryGroups={config.category_groups} value={transaction.category} all={Boolean(expandedCategoryIds[transaction.id])} variant="row" ariaLabel={`Categoria de ${transaction.description}`} onselect={(value) => setCategory(transaction, value)} onallchange={(checked) => expandedCategoryIds[transaction.id] = checked} /><small class="source-label" class:ai-source={transaction.category_source === 'ai'}>{transaction.category_source === 'pluggy' ? 'Classificada pela Pluggy' : transaction.category_source === 'rule' ? 'Regra por nome' : transaction.category_source === 'ai' ? `IA · ${Math.round((transaction.category_confidence || 0) * 100)}%` : transaction.category_source === 'manual' ? 'Editada por você' : transaction.pending ? 'Pendente' : ''}</small></div>
                 <div class="transaction-amount" class:income-amount={Number(transaction.amount) < 0}>{formatMoney(Math.abs(Number(transaction.amount)), transaction.currency)}</div>
                 <button class="classify-button" title={transaction.category_source === 'pluggy' ? 'Já classificada pela Pluggy' : transaction.category_source === 'rule' ? 'Classificada por regra' : 'Classificar com IA'} onclick={() => classify(transaction)} disabled={busy || !config.ai_configured || ['pluggy', 'rule'].includes(transaction.category_source)}>✳</button>
               </article>

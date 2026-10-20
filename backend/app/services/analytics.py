@@ -9,6 +9,7 @@ from app.services.finance import EXCLUDED_OPERATIONS, is_expense
 
 
 INVESTMENT_CATEGORIES = set(CATEGORY_GROUPS["Investments"])
+MACRO_CATEGORIES = {name: set(categories) for name, categories in CATEGORY_GROUPS.items()}
 
 
 def shift_month(month: date, offset: int) -> date:
@@ -23,8 +24,10 @@ def analyze_transactions(
     mode: str,
     selected_month: date,
     selected_categories: set[str] | None = None,
+    selected_tag_ids: set[int] | None = None,
 ) -> dict:
     selected_categories = selected_categories or set()
+    selected_tag_ids = selected_tag_ids or set()
     first_month = shift_month(today.replace(day=1), 1 - months)
     month_keys = [shift_month(first_month, index).strftime("%Y-%m") for index in range(months)]
     month_totals = defaultdict(lambda: {"amount": Decimal("0"), "count": 0})
@@ -35,6 +38,10 @@ def analyze_transactions(
     for transaction in transactions:
         if not first_month <= transaction.date <= today or transaction.pending or transaction.currency != "BRL":
             continue
+        if selected_tag_ids and not any(tag.id in selected_tag_ids for tag in transaction.tags):
+            continue
+        if selected_categories and transaction.category not in selected_categories:
+            continue
         if mode == "expenses":
             if not is_expense(transaction):
                 continue
@@ -42,7 +49,7 @@ def analyze_transactions(
             continue
 
         if transaction.amount < 0:
-            if mode == "investments" and (not selected_categories or transaction.category in selected_categories):
+            if mode == "investments":
                 inflows += abs(transaction.amount)
             continue
         if transaction.amount == 0:
@@ -50,8 +57,6 @@ def analyze_transactions(
 
         category_totals[transaction.category]["amount"] += transaction.amount
         category_totals[transaction.category]["count"] += 1
-        if selected_categories and transaction.category not in selected_categories:
-            continue
         monthly = month_totals[transaction.date.strftime("%Y-%m")]
         monthly["amount"] += transaction.amount
         monthly["count"] += 1

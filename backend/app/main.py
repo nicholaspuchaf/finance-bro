@@ -16,7 +16,7 @@ from app.migrations import initialize_database
 from app.models import Account, BankConnection, CategoryRule, Tag, Transaction, transaction_tags, utc_now
 from app.schemas import CATEGORIES, CategoryRuleCreate, ConnectionRead, TagCreate, TagRead, TransactionCreate, TransactionRead, TransactionUpdate
 from app.services.ai_classifier import AIConfigurationError, AIResponseError, OpenAIClassifier
-from app.services.analytics import analyze_transactions, shift_month
+from app.services.analytics import MACRO_CATEGORIES, analyze_transactions, shift_month
 from app.services.category_rules import assign_rule_category, name_key, transaction_name
 from app.services.finance import EXCLUDED_CATEGORIES, recurring_expenses, spending_summary
 from app.services.pluggy import PluggyClient, PluggyConfigurationError, PluggyResponseError, transaction_values
@@ -87,6 +87,8 @@ async def analytics(
     month: str | None = Query(default=None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$"),
     category: str | None = None,
     categories: list[str] = Query(default_factory=list),
+    macro_categories: list[str] = Query(default_factory=list),
+    tag_ids: list[int] = Query(default_factory=list),
     session: Session = Depends(get_session),
 ):
     today = date.today()
@@ -99,12 +101,29 @@ async def analytics(
         raise HTTPException(422, "O mês selecionado está fora do período de análise.")
     available_categories = list(CATEGORY_GROUPS["Investments"]) if mode == "investments" else [name for name in CATEGORIES if name not in EXCLUDED_CATEGORIES]
     selected_categories = list(dict.fromkeys([*categories, *([category] if category else [])]))
-    if any(name not in available_categories for name in selected_categories):
-        raise HTTPException(422, "Categoria inválida para esta análise.")
-    transactions = session.scalars(select(Transaction).where(Transaction.date >= first_month, Transaction.date <= today)).all()
-    result = analyze_transactions(transactions, today, months, mode, selected_month, set(selected_categories))
+    available_macro_categories = list(MACRO_CATEGORIES)
+    selectable_macro_categories = available_macro_categories
+    selected_macro_categories = list(dict.fromkeys(macro_categories))
+    if any(name not in CATEGORIES for name in selected_categories) or any(name not in MACRO_CATEGORIES for name in selected_macro_categories):
+        raise HTTPException(422, "Categoria inválida.")
+    selected_tag_ids = list(dict.fromkeys(tag_ids))
+    if selected_tag_ids:
+        existing_tags = set(session.scalars(select(Tag.id).where(Tag.id.in_(selected_tag_ids))).all())
+        if existing_tags != set(selected_tag_ids):
+            raise HTTPException(422, "Uma ou mais tags não existem.")
+    category_members = set(selected_categories)
+    for name in selected_macro_categories:
+        category_members.update(MACRO_CATEGORIES[name])
+    transactions = session.scalars(select(Transaction).where(Transaction.date >= first_month, Transaction.date <= today).options(selectinload(Transaction.tags))).all()
+    result = analyze_transactions(transactions, today, months, mode, selected_month, category_members, set(selected_tag_ids))
     result["selected_categories"] = selected_categories
+    result["selected_macro_categories"] = selected_macro_categories
+    result["selected_category_members"] = sorted(category_members)
+    result["selected_tag_ids"] = selected_tag_ids
     result["available_categories"] = available_categories
+    result["selectable_categories"] = CATEGORIES
+    result["available_macro_categories"] = available_macro_categories
+    result["selectable_macro_categories"] = selectable_macro_categories
     return result
 
 

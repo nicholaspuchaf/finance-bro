@@ -1,13 +1,17 @@
 <script>
   import TrendChart from './TrendChart.svelte';
+  import CategorySelector from './CategorySelector.svelte';
   import './analytics.css';
 
-  let { hideAmounts = false } = $props();
+  let { hideAmounts = false, tags = [], categories = [], categoryGroups = [] } = $props();
   let mode = $state('expenses');
   let months = $state(1);
   let selectedMonth = $state('');
   let selectedCategories = $state([]);
+  let selectedMacros = $state([]);
+  let selectedTagIds = $state([]);
   let showAllCategories = $state(false);
+  let showMacroCategories = $state(false);
   let monthlyChart = $state('area');
   let dailyChart = $state('bar');
   let dailyView = $state('daily');
@@ -16,17 +20,14 @@
   let error = $state('');
   let requestNumber = 0;
   const palette = ['#df826c', '#8d81cb', '#5fae91', '#e2af61', '#72a5cb', '#b4a7bd'];
-  const commonExpenseCategories = new Set([
-    'Uncategorized', 'Groceries', 'Food and drinks', 'Eating out', 'Food delivery',
-    'Shopping', 'Transportation', 'Housing', 'Utilities', 'Healthcare',
-    'Education', 'Travel', 'Services', 'Leisure', 'Other',
-  ]);
 
   async function loadAnalysis() {
     const current = ++requestNumber;
     const query = new URLSearchParams({ mode, months: String(months) });
     if (selectedMonth) query.set('month', selectedMonth);
     for (const category of selectedCategories) query.append('categories', category);
+    for (const category of selectedMacros) query.append('macro_categories', category);
+    for (const tagId of selectedTagIds) query.append('tag_ids', String(tagId));
     loading = true;
     error = '';
     try {
@@ -45,13 +46,14 @@
   }
 
   $effect(() => {
-    mode; months; selectedMonth; selectedCategories;
+    mode; months; selectedMonth; selectedCategories; selectedMacros; selectedTagIds;
     loadAnalysis();
   });
 
   function chooseMode(next) {
     mode = next;
     selectedCategories = [];
+    selectedMacros = [];
     showAllCategories = false;
   }
 
@@ -59,6 +61,27 @@
     selectedCategories = selectedCategories.includes(category)
       ? selectedCategories.filter((item) => item !== category)
       : [...selectedCategories, category];
+  }
+
+  function toggleMacro(category) {
+    selectedMacros = selectedMacros.includes(category)
+      ? selectedMacros.filter((item) => item !== category)
+      : [...selectedMacros, category];
+  }
+
+  function addCategory(category, kind) {
+    if (!category) return;
+    if (kind === 'macro') {
+      if (!selectedMacros.includes(category)) selectedMacros = [...selectedMacros, category];
+    } else if (!selectedCategories.includes(category)) {
+      selectedCategories = [...selectedCategories, category];
+    }
+  }
+
+  function toggleTag(tagId) {
+    selectedTagIds = selectedTagIds.includes(tagId)
+      ? selectedTagIds.filter((id) => id !== tagId)
+      : [...selectedTagIds, tagId];
   }
 
   function chooseMonths(value) {
@@ -91,11 +114,10 @@
   let peakMonth = $derived((analysis?.monthly || []).reduce((best, item) => Number(item.amount) > Number(best?.amount || 0) ? item : best, null));
   let peakDay = $derived((analysis?.daily || []).reduce((best, item) => Number(item.amount) > Number(best?.amount || 0) ? item : best, null));
   let topCategories = $derived((analysis?.categories || []).slice(0, 5));
-  let visibleCategories = $derived(
-    (analysis?.mode === mode ? analysis.available_categories || [] : [])
-      .filter((item) => showAllCategories || mode === 'investments' || commonExpenseCategories.has(item) || selectedCategories.includes(item))
-  );
-  let categorySelectionLabel = $derived(selectedCategories.length === 0 ? 'Todas as categorias' : selectedCategories.length === 1 ? selectedCategories[0] : `${selectedCategories.length} categorias agregadas`);
+  let categorySelectionCount = $derived(selectedCategories.length + selectedMacros.length);
+  let categorySelectionLabel = $derived(categorySelectionCount === 0 ? 'Todas as categorias' : categorySelectionCount === 1 ? (selectedMacros[0] || selectedCategories[0]) : `${categorySelectionCount} categorias agregadas`);
+  let selectedTags = $derived(tags.filter((tag) => selectedTagIds.includes(tag.id)));
+  let tagSelectionLabel = $derived(selectedTags.length === 0 ? 'Todas as tags' : selectedTags.length === 1 ? selectedTags[0].name : `${selectedTags.length} tags agregadas`);
   let donutGradient = $derived.by(() => {
     if (!overallTotal) return 'conic-gradient(#edeaf0 0 100%)';
     let progress = 0;
@@ -121,40 +143,42 @@
       <button type="button" class:active={mode === 'investments'} aria-pressed={mode === 'investments'} onclick={() => chooseMode('investments')}>◈ &nbsp; Investimentos</button>
     </div>
     <div class="analytics-filters">
-      <details class="analytics-category-picker"><summary><span>Categoria</span><strong>{categorySelectionLabel}</strong><i aria-hidden="true">⌄</i></summary><div class="analytics-category-menu"><div class="analytics-category-menu-head"><strong>Escolha uma ou mais</strong><label><input type="checkbox" bind:checked={showAllCategories} /> Todas</label></div><p>{showAllCategories ? 'Todas as categorias disponíveis' : 'Categorias mais comuns'} · sem seleção, mostramos o total geral.</p><div class="analytics-category-options" role="group" aria-label="Categorias para agregar">{#each visibleCategories as item}<label><input type="checkbox" checked={selectedCategories.includes(item)} onchange={() => toggleCategory(item)} /><span>{item}</span></label>{:else}<span class="analytics-no-categories">Carregando categorias…</span>{/each}</div><div class="analytics-category-menu-foot"><button type="button" onclick={() => selectedCategories = []} disabled={!selectedCategories.length}>Limpar</button><button type="button" onclick={(event) => event.currentTarget.closest('details').open = false}>Concluir</button></div></div></details>
+      <CategorySelector {categories} {categoryGroups} value="" all={showAllCategories} macro={showMacroCategories} allowMacro resetOnSelect label="Categoria:" placeholder="Qualquer categoria" ariaLabel="Adicionar categoria à análise" onselect={addCategory} onallchange={(checked) => { showAllCategories = checked; if (checked) showMacroCategories = false; }} onmacrochange={(checked) => { showMacroCategories = checked; if (checked) showAllCategories = false; }} />
+      <details class="analytics-category-picker analytics-tag-picker"><summary><span>Tags</span><strong>{tagSelectionLabel}</strong><i aria-hidden="true">⌄</i></summary><div class="analytics-category-menu"><div class="analytics-category-menu-head"><strong>Filtrar por tags</strong></div><p>Selecione uma ou mais tags. Uma transação com várias tags conta uma vez.</p><div class="analytics-category-options" role="group" aria-label="Tags para agregar">{#each tags as tag}<label><input type="checkbox" checked={selectedTagIds.includes(tag.id)} onchange={() => toggleTag(tag.id)} /><span>{tag.name}</span><small>{tag.transaction_count}</small></label>{:else}<span class="analytics-no-categories">Nenhuma tag criada. Use a página Tags para adicionar.</span>{/each}</div><div class="analytics-category-menu-foot"><button type="button" onclick={() => selectedTagIds = []} disabled={!selectedTagIds.length}>Limpar</button><button type="button" onclick={(event) => event.currentTarget.closest('details').open = false}>Concluir</button></div></div></details>
       <div class="analytics-period-control"><div class="analytics-period-heading"><span>Período</span><output aria-live="polite">{months === 1 ? 'Mês atual' : `Últimos ${months} meses`}</output></div><div class="analytics-period-options" role="group" aria-label="Período da análise">{#each [1, 3, 6, 12, 24] as option}<button type="button" class:active={months === option} aria-pressed={months === option} onclick={() => chooseMonths(option)}>{months === option ? '✓ ' : ''}{option} {option === 1 ? 'mês' : 'meses'}</button>{/each}</div></div>
     </div>
   </div>
-  {#if selectedCategories.length}<div class="analytics-selected-categories" aria-label="Categorias agregadas"><span>Agregando</span>{#each selectedCategories as item}<button type="button" aria-label={`Remover ${item}`} onclick={() => toggleCategory(item)}>{item} <b aria-hidden="true">×</b></button>{/each}<button type="button" class="clear-selected" onclick={() => selectedCategories = []}>Limpar seleção</button></div>{/if}
+  {#if categorySelectionCount}<div class="analytics-selected-categories" aria-label="Categorias agregadas"><span>Agregando</span>{#each selectedCategories as item}<button type="button" aria-label={`Remover categoria ${item}`} onclick={() => toggleCategory(item)}>{item} <b aria-hidden="true">×</b></button>{/each}{#each selectedMacros as item}<button type="button" aria-label={`Remover macro-categoria ${item}`} onclick={() => toggleMacro(item)}>{item} (macro) <b aria-hidden="true">×</b></button>{/each}<button type="button" class="clear-selected" onclick={() => { selectedCategories = []; selectedMacros = []; }}>Limpar seleção</button></div>{/if}
+  {#if selectedTags.length}<div class="analytics-selected-categories analytics-tag-selection" aria-label="Tags selecionadas"><span>Tags</span>{#each selectedTags as tag}<button type="button" aria-label={`Remover tag ${tag.name}`} onclick={() => toggleTag(tag.id)}>{tag.name} <b aria-hidden="true">×</b></button>{/each}<button type="button" class="clear-selected" onclick={() => selectedTagIds = []}>Limpar tags</button></div>{/if}
 
   {#if error}<div class="analytics-error" role="alert">{error} <button type="button" onclick={loadAnalysis}>Tentar novamente</button></div>{/if}
   {#if loading && !analysis}<div class="analytics-loading" role="status"><div class="loader"></div> Preparando sua análise…</div>
   {:else if analysis}
     {#if loading}<div class="analytics-updating" role="status"><div class="loader"></div> Atualizando análise…</div>{/if}
     <div class="analytics-hero">
-      <div class="analytics-hero-copy"><span class="analytics-kicker">{mode === 'expenses' ? 'TOTAL DE GASTOS' : 'APORTES IDENTIFICADOS'} · {categorySelectionLabel.toUpperCase()}</span><strong>{money(total)}</strong><span class="analytics-hero-period">{analysis.months === 1 ? 'Mês atual' : `Últimos ${analysis.months} meses`} <i>·</i> {monthName(analysis.period_start, true)} — {monthName(analysis.period_end, true)} <i>·</i> {analysis.count} {analysis.count === 1 ? 'lançamento' : 'lançamentos'}</span></div>
+      <div class="analytics-hero-copy"><span class="analytics-kicker">{mode === 'expenses' ? 'TOTAL DE GASTOS' : 'APORTES IDENTIFICADOS'} · {categorySelectionLabel.toUpperCase()}{selectedTags.length ? ` · ${tagSelectionLabel.toUpperCase()}` : ''}</span><strong>{money(total)}</strong><span class="analytics-hero-period">{analysis.months === 1 ? 'Mês atual' : `Últimos ${analysis.months} meses`} <i>·</i> {monthName(analysis.period_start, true)} — {monthName(analysis.period_end, true)} <i>·</i> {analysis.count} {analysis.count === 1 ? 'lançamento' : 'lançamentos'}</span></div>
       <div class="analytics-hero-mark" aria-hidden="true">{mode === 'expenses' ? '↗' : '◈'}</div>
     </div>
 
     <div class="analytics-stat-grid">
       <article class="analytics-stat"><span>Média por mês</span><strong>{money(total / months)}</strong><small>Nos {months} {months === 1 ? 'mês' : 'meses'} da análise</small></article>
       <article class="analytics-stat"><span>Mês de maior movimento</span><strong>{peakMonth && Number(peakMonth.amount) ? money(peakMonth.amount) : '—'}</strong><small>{peakMonth && Number(peakMonth.amount) ? monthName(peakMonth.month, true) : 'Sem lançamentos no período'}</small></article>
-      <article class="analytics-stat"><span>{mode === 'expenses' ? 'Categorias com movimento' : 'Entradas relacionadas'}</span><strong>{mode === 'expenses' ? (selectedCategories.length ? analysis.categories.filter((item) => selectedCategories.includes(item.category)).length : analysis.categories.length) : money(analysis.inflows)}</strong><small>{mode === 'expenses' ? 'Na seleção atual' : 'Resgates ou proventos classificados'}</small></article>
+      <article class="analytics-stat"><span>{mode === 'expenses' ? 'Categorias com movimento' : 'Entradas relacionadas'}</span><strong>{mode === 'expenses' ? analysis.categories.length : money(analysis.inflows)}</strong><small>{mode === 'expenses' ? 'Na seleção atual' : 'Resgates ou proventos classificados'}</small></article>
       <article class="analytics-stat"><span>Transações analisadas</span><strong>{analysis.count}</strong><small>Confirmadas em BRL</small></article>
     </div>
 
     <div class="analytics-main-grid">
       <section class="analytics-card analytics-trend-panel" aria-labelledby="monthly-title">
-        <div class="analytics-card-top"><div><span class="analytics-section-kicker">01 / VISÃO AMPLA</span><h2 id="monthly-title">Evolução mensal</h2><p>{mode === 'expenses' ? 'Quanto saiu em cada mês' : 'Aportes identificados em cada mês'}{selectedCategories.length ? ` · ${categorySelectionLabel}` : ''}</p></div><div class="chart-switch" role="group" aria-label="Tipo do gráfico mensal"><button type="button" class:active={monthlyChart === 'bar'} aria-label="Colunas" aria-pressed={monthlyChart === 'bar'} title="Colunas" onclick={() => monthlyChart = 'bar'}>▥</button><button type="button" class:active={monthlyChart === 'line'} aria-label="Linha" aria-pressed={monthlyChart === 'line'} title="Linha" onclick={() => monthlyChart = 'line'}>⌁</button><button type="button" class:active={monthlyChart === 'area'} aria-label="Área" aria-pressed={monthlyChart === 'area'} title="Área" onclick={() => monthlyChart = 'area'}>◢</button></div></div>
+        <div class="analytics-card-top"><div><span class="analytics-section-kicker">01 / VISÃO AMPLA</span><h2 id="monthly-title">Evolução mensal</h2><p>{mode === 'expenses' ? 'Quanto saiu em cada mês' : 'Aportes identificados em cada mês'}{categorySelectionCount ? ` · ${categorySelectionLabel}` : ''}</p></div><div class="chart-switch" role="group" aria-label="Tipo do gráfico mensal"><button type="button" class:active={monthlyChart === 'bar'} aria-label="Colunas" aria-pressed={monthlyChart === 'bar'} title="Colunas" onclick={() => monthlyChart = 'bar'}>▥</button><button type="button" class:active={monthlyChart === 'line'} aria-label="Linha" aria-pressed={monthlyChart === 'line'} title="Linha" onclick={() => monthlyChart = 'line'}>⌁</button><button type="button" class:active={monthlyChart === 'area'} aria-label="Área" aria-pressed={monthlyChart === 'area'} title="Área" onclick={() => monthlyChart = 'area'}>◢</button></div></div>
         {#if total}<div class="analytics-chart-scroll"><TrendChart points={monthlyPoints} type={monthlyChart} accent={mode === 'expenses' ? '#db806a' : '#8877c6'} id="monthly-fill" {hideAmounts} label="Evolução mensal em reais" /></div>{:else}<div class="analytics-empty">Nenhum {mode === 'expenses' ? 'gasto' : 'aporte'} encontrado para esta seleção.<span>Experimente outro período ou categoria.</span></div>{/if}
         <div class="analytics-chart-foot"><span>◌ &nbsp; {months} {months === 1 ? 'mês' : 'meses'} de análise</span><span>O mês atual está em andamento</span></div>
       </section>
 
       <section class="analytics-card analytics-composition" aria-labelledby="composition-title">
-        <div class="analytics-card-top"><div><span class="analytics-section-kicker">02 / COMPOSIÇÃO</span><h2 id="composition-title">Por categoria</h2><p>Distribuição geral do período</p></div></div>
+        <div class="analytics-card-top"><div><span class="analytics-section-kicker">02 / COMPOSIÇÃO</span><h2 id="composition-title">Por categoria</h2><p>{categorySelectionCount || selectedTags.length ? 'Distribuição dentro dos filtros selecionados' : 'Distribuição geral do período'}</p></div></div>
         {#if overallTotal}
           <div class="analytics-donut-wrap"><div class="analytics-donut" style={`background:${donutGradient}`} role="img" aria-label="Distribuição por categoria"><div><small>TOTAL</small><strong>{money(overallTotal)}</strong></div></div></div>
-          <div class="analytics-legend"><button type="button" class:chosen={!selectedCategories.length} onclick={() => selectedCategories = []}><span class="legend-name"><i class="legend-dot all"></i>Todas</span><b>100%</b></button>{#each topCategories as item, index}<button type="button" class:chosen={selectedCategories.includes(item.category)} onclick={() => toggleCategory(item.category)}><span class="legend-name"><i class="legend-dot" style={`background:${palette[index]}`}></i>{item.category}</span><span class="legend-metric"><b>{money(item.amount)}</b><small>{Math.round(Number(item.amount) / overallTotal * 100)}%</small></span></button>{/each}</div>
+          <div class="analytics-legend"><button type="button" class:chosen={!categorySelectionCount} onclick={() => { selectedCategories = []; selectedMacros = []; }}><span class="legend-name"><i class="legend-dot all"></i>Todas</span><b>100%</b></button>{#each topCategories as item, index}<button type="button" class:chosen={selectedCategories.includes(item.category)} onclick={() => toggleCategory(item.category)}><span class="legend-name"><i class="legend-dot" style={`background:${palette[index]}`}></i>{item.category}</span><span class="legend-metric"><b>{money(item.amount)}</b><small>{Math.round(Number(item.amount) / overallTotal * 100)}%</small></span></button>{/each}</div>
         {:else}<div class="analytics-empty small">As categorias aparecem quando houver lançamentos.</div>{/if}
       </section>
     </div>

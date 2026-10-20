@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 import httpx
@@ -146,7 +146,7 @@ def test_analytics_filters_months_categories_and_investment_cash_flows(client):
     assert Decimal(result["daily"][0]["amount"]) == 30
     assert len(result["daily"]) >= 28
     assert Decimal(result["daily"][-1]["amount"]) == 0
-    assert {item["category"]: Decimal(item["amount"]) for item in result["categories"]} == {"Groceries": 80, "Housing": 20}
+    assert {item["category"]: Decimal(item["amount"]) for item in result["categories"]} == {"Groceries": 80}
 
     investments = api.get("/api/analytics", params={"mode": "investments", "months": 3}).json()
     assert Decimal(investments["total"]) == 100
@@ -155,7 +155,7 @@ def test_analytics_filters_months_categories_and_investment_cash_flows(client):
     assert investments["categories"][0]["category"] == "Fixed income"
     assert Decimal(investments["categories"][0]["amount"]) == 100
     assert api.get("/api/analytics", params={"months": 25}).status_code == 422
-    assert api.get("/api/analytics", params={"mode": "investments", "category": "Groceries"}).status_code == 422
+    assert api.get("/api/analytics", params={"mode": "investments", "category": "Groceries"}).status_code == 200
     assert api.get("/api/analytics", params={"month": "2099-01"}).status_code == 422
 
 
@@ -192,7 +192,79 @@ def test_analytics_aggregates_multiple_selected_categories(client):
     assert investments["count"] == 2
     assert "Food delivery" not in investments["available_categories"]
     assert Decimal(api.get("/api/analytics").json()["total"]) == 150
-    assert api.get("/api/analytics", params=[("categories", "Food delivery"), ("categories", "Fixed income")]).status_code == 422
+    assert Decimal(api.get("/api/analytics", params=[("categories", "Food delivery"), ("categories", "Fixed income")]).json()["total"]) == 30
+
+
+@pytest.mark.parametrize(
+    ("selection", "expected", "inflows"),
+    [
+        ({"categories": ["Food and drinks"]}, {"Food and drinks": 10}, 0),
+        ({"categories": ["Food delivery", "Eating out"]}, {"Food delivery": 25, "Eating out": 30}, 0),
+        ({"macro_categories": ["Food and drinks"]}, {"Food and drinks": 10, "Food delivery": 25, "Eating out": 30}, 0),
+        ({"macro_categories": ["Food and drinks", "Travel"]}, {"Food and drinks": 10, "Food delivery": 25, "Eating out": 30, "Travel": 40, "Accommodation": 50}, 0),
+        ({"macro_categories": ["Services"]}, {"Internet": 70}, 0),
+        ({"categories": ["Food delivery", "Food delivery"], "macro_categories": ["Food and drinks", "Food and drinks"]}, {"Food and drinks": 10, "Food delivery": 25, "Eating out": 30}, 0),
+        ({"categories": ["Groceries"], "macro_categories": ["Food and drinks", "Travel"]}, {"Food and drinks": 10, "Food delivery": 25, "Eating out": 30, "Travel": 40, "Accommodation": 50, "Groceries": 60}, 0),
+        ({"macro_categories": ["Food and drinks", "Travel"], "tags": ["Work"]}, {"Food delivery": 25, "Accommodation": 50}, 0),
+        ({"macro_categories": ["Food and drinks"], "tags": ["Work", "Personal"]}, {"Food delivery": 25, "Eating out": 30}, 0),
+        ({"mode": "investments", "macro_categories": ["Investments"]}, {"Fixed income": 80, "Mutual funds": 90}, 40),
+        ({"mode": "investments", "categories": ["Fixed income"]}, {"Fixed income": 80}, 0),
+        ({"mode": "investments", "categories": ["Proceeds interests and dividends"]}, {}, 15),
+        ({"categories": ["Pharmacy"]}, {}, 0),
+        ({}, {"Food and drinks": 10, "Food delivery": 25, "Eating out": 30, "Travel": 40, "Accommodation": 50, "Groceries": 60, "Internet": 70}, 0),
+    ],
+)
+def test_dashboard_filters_apply_to_all_metrics(client, selection, expected, inflows):
+    api, sessions = client
+    today = date.today()
+    previous_month = shift_month(today.replace(day=1), -1)
+    tags = {name: api.post("/api/tags", json={"name": name}).json()["id"] for name in ("Work", "Personal")}
+    for day, amount, category, names in [
+        (today, 10, "Food and drinks", []),
+        (today, 20, "Food delivery", ["Work", "Personal"]),
+        (today, 30, "Eating out", ["Personal"]),
+        (today, 40, "Travel", []),
+        (today, 50, "Accommodation", ["Work"]),
+        (today, 60, "Groceries", ["Work"]),
+        (today, 70, "Internet", []),
+        (today, 80, "Fixed income", []),
+        (today, 90, "Mutual funds", []),
+        (today, -15, "Proceeds interests and dividends", []),
+        (today, -25, "Pension", []),
+        (previous_month, 5, "Food delivery", ["Work"]),
+    ]:
+        assert api.post("/api/transactions", json={"date": day.isoformat(), "description": category, "amount": str(amount), "category": category, "tag_ids": [tags[name] for name in names]}).status_code == 201
+    # These rows must never affect the selected BRL expenses or their composition.
+    with sessions() as session:
+        for overrides in [
+            {"pending": True}, {"currency": "USD"}, {"operation_type": "ESTORNO"},
+            {"date": shift_month(today.replace(day=1), -3)},
+            {"date": today + timedelta(days=1)}, {"amount": Decimal("-1000")},
+        ]:
+            session.add(Transaction(**{"date": today, "description": "Excluded row", "amount": Decimal("1000"), "category": "Food delivery", **overrides}))
+        session.commit()
+
+    params = [("months", "3"), ("mode", selection.get("mode", "expenses"))]
+    for key in ("categories", "macro_categories"):
+        params.extend((key, value) for value in selection.get(key, []))
+    params.extend(("tag_ids", str(tags[name])) for name in selection.get("tags", []))
+    response = api.get("/api/analytics", params=params)
+    assert response.status_code == 200
+    result = response.json()
+    expected_total = sum(expected.values())
+    assert Decimal(result["total"]) == expected_total
+    assert Decimal(result["inflows"]) == inflows
+    assert {row["category"]: Decimal(row["amount"]) for row in result["categories"]} == expected
+    assert sum(Decimal(row["amount"]) for row in result["categories"]) == expected_total
+    assert sum(Decimal(row["amount"]) for row in result["monthly"]) == expected_total
+    previous_total = 5 if "Food delivery" in expected else 0
+    assert Decimal(result["monthly"][-2]["amount"]) == previous_total
+    assert sum(Decimal(row["amount"]) for row in result["daily"]) == expected_total - previous_total
+    expected_count = sum(2 if category == "Food delivery" else 1 for category in expected)
+    assert result["count"] == expected_count
+    assert sum(row["count"] for row in result["categories"]) == expected_count
+    assert result["selected_categories"] == list(dict.fromkeys(selection.get("categories", [])))
+    assert result["selected_macro_categories"] == list(dict.fromkeys(selection.get("macro_categories", [])))
 
 
 def test_mocked_pluggy_sync_reuses_transactions_and_preserves_category(client, monkeypatch):

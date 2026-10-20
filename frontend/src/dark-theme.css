@@ -211,7 +211,6 @@
 :root[data-theme="dark"] .analytics-empty span,
 :root[data-theme="dark"] .legend-metric small { color: #aab3c4; }
 :root[data-theme="dark"] .analytics-back,
-:root[data-theme="dark"] .analytics-filters label,
 :root[data-theme="dark"] .analytics-daily-controls label,
 :root[data-theme="dark"] .analytics-month-label,
 :root[data-theme="dark"] .analytics-period-options,
@@ -235,11 +234,9 @@
 :root[data-theme="dark"] .analytics-period-control button.active { background: #514060; color: #ffdbc8; box-shadow: 0 3px 11px #080a1860; }
 :root[data-theme="dark"] .chart-switch button:hover:not(.active),
 :root[data-theme="dark"] .analytics-period-control button:hover:not(.active) { background: #354056; color: #f2f3fa; }
-:root[data-theme="dark"] .analytics-filters select,
 :root[data-theme="dark"] .analytics-daily-controls select,
 :root[data-theme="dark"] .analytics-period-heading output,
 :root[data-theme="dark"] .analytics-category-picker summary strong { color: #edf0f8; }
-:root[data-theme="dark"] .analytics-filters label,
 :root[data-theme="dark"] .analytics-daily-controls label,
 :root[data-theme="dark"] .analytics-period-control,
 :root[data-theme="dark"] .analytics-category-picker summary > span { color: #abb6c7; }
@@ -279,12 +276,15 @@
 :root[data-theme="dark"] .analytics-no-categories { color: #abb5c7; }
 :root[data-theme="dark"] .analytics-category-menu .analytics-category-options label { color: #e4e8f1; }
 :root[data-theme="dark"] .analytics-category-menu .analytics-category-options label:hover { background: #384158; }
+:root[data-theme="dark"] .analytics-tag-picker .analytics-category-options label small { color: #aeb8c8; }
 :root[data-theme="dark"] .analytics-category-menu-foot button { color: #d9c4ff; }
 :root[data-theme="dark"] .analytics-category-menu-foot button:last-child { background: #514060; color: #fff0e9; }
 :root[data-theme="dark"] .analytics-selected-categories > span { color: #b2bdce; }
 :root[data-theme="dark"] .analytics-selected-categories button { background: #38314a; border-color: #5d4c72; color: #e1d1ff; }
 :root[data-theme="dark"] .analytics-selected-categories button:hover { background: #473958; }
 :root[data-theme="dark"] .analytics-selected-categories .clear-selected { background: transparent; border-color: transparent; color: #b8c2d1; }
+:root[data-theme="dark"] .analytics-tag-selection button:not(.clear-selected) { background: #294536; border-color: #476b55; color: #b7eccb; }
+:root[data-theme="dark"] .analytics-tag-selection button:not(.clear-selected):hover { background: #355841; }
 :root[data-theme="dark"] .analytics-chart-scroll { scrollbar-color: #4d5870 transparent; }
 
 @media (max-width: 480px) {
@@ -295,3 +295,5 @@
 @media (prefers-reduced-motion: reduce) {
   .theme-toggle { transition: none; }
 }
+
+:root[data-theme="dark"] .analytics-page .analytics-tag-picker>summary{background:transparent;border:0;box-shadow:none}
