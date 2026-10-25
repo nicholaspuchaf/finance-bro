@@ -1,0 +1,27 @@
+# Only these files are needed by the build. No local data or credentials.
+**
+!backend/
+!backend/pyproject.toml
+!backend/uv.lock
+!backend/README.md
+!backend/app/
+!backend/app/**
+!backend/scripts/
+!backend/scripts/**
+!frontend/
+!frontend/package.json
+!frontend/pnpm-lock.yaml
+!frontend/pnpm-workspace.yaml
+!frontend/index.html
+!frontend/vite.config.js
+!frontend/svelte.config.js
+!frontend/jsconfig.json
+!frontend/src/
+!frontend/src/**
+!frontend/public/
+!frontend/public/**
+**/__pycache__/
+**/*.pyc
+**/.env*
+**/*.db
+**/*.sqlite3

@@ -2,21 +2,31 @@
 
 Gerenciador financeiro pessoal local. O frontend Svelte e o backend Python ficam separados; transações ficam em SQLite na máquina local.
 
-Documentação: [estado do projeto e próximos passos](docs/PROJECT_STATUS.md), [configuração do Meu Pluggy](docs/PLUGGY_SETUP.md) e [segurança e privacidade](docs/SECURITY.md).
+Documentação: [Docker e decisão de arquitetura](docs/DOCKER.md), [estado do projeto e próximos passos](docs/PROJECT_STATUS.md), [configuração do Meu Pluggy](docs/PLUGGY_SETUP.md) e [segurança e privacidade](docs/SECURITY.md).
 
-## Requisitos
+## Executar com Docker
 
-- Node.js 20.19+ e pnpm
-- Python 3.12+ e uv
+Requer Docker com Compose v2.24+. Na raiz, copie `.env.example` para `.env` se ainda não tiver esse arquivo e execute:
 
-## Começar
+```sh
+docker compose --env-file .env.conf up --build -d
+```
 
-1. Copie `.env.example` para `.env`. As credenciais são opcionais para abrir o app; são necessárias para conectar a Pluggy e usar a classificação com IA.
-2. Instale as dependências uma vez: `cd backend && uv sync`; depois `cd ../frontend && pnpm install`.
-3. Na raiz do repositório, execute `python3 dev.py`. O comando inicia backend e frontend e encerra ambos com `Ctrl+C`.
-4. Abra `http://127.0.0.1:5173`.
+Abra `http://localhost:<FINANCE_BRO_PORT>`, usando a porta definida em `.env.conf`. As chaves são opcionais para abrir o site. A API e o frontend compilado são servidos pelo mesmo processo, em uma imagem Debian slim; Node/pnpm são usados apenas no build. O SQLite fica em um volume persistente e começa vazio na primeira execução. Bancos do modo nativo não são importados automaticamente.
 
-A API fica em `http://127.0.0.1:8000/docs`. O banco é criado automaticamente em `backend/data/finance_bro.db`. O arquivo `.env` deve ficar na raiz do projeto.
+`docker compose --env-file .env.conf down` encerra o app preservando os dados; `down -v` apaga o volume. Porta, backup, migração do banco e comparação entre um/dois containers estão em [docs/DOCKER.md](docs/DOCKER.md).
+
+### Selecionar a porta
+
+Edite **`.env.conf`**, que contém a única porta publicada no host:
+
+```dotenv
+FINANCE_BRO_PORT=808
+```
+
+`FINANCE_BRO_PORT` controla o endereço do site e da API. Por exemplo, use `FINANCE_BRO_PORT=9080` para abrir o site em `http://localhost:9080` e a documentação da API em `http://localhost:9080/docs`. As credenciais continuam somente no `.env`. Após alterar a porta, recrie o serviço com `docker compose --env-file .env.conf up -d`.
+
+O Docker Compose é o fluxo de execução do projeto; o antigo `dev.py` foi removido. Para editar o código e publicar uma nova versão local, execute novamente `docker compose --env-file .env.conf up --build -d`. Node/pnpm e Python/uv no host são opcionais, usados apenas para executar as verificações locais de contribuição.
 
 Os botões `A−` e `A+` ao lado de **Ambiente local** ajustam a escala da interface entre 80% e 150%. A escolha fica salva neste navegador.
 
@@ -42,10 +52,10 @@ A página **Dashboards** apresenta um dashboard independente da paginação da l
 
 ## Dados locais e backup
 
-O SQLite e o `.env` ficam somente na máquina que executa o backend. Pluggy recebe os dados bancários da conexão; a IA recebe os campos usados para classificação. Não execute o backend em rede pública sem autenticação. Para backup consistente, rode `cd backend && uv run python scripts/backup.py`; a cópia vai para `backend/data/backups/` com permissão restrita. Para restaurar, pare o backend, faça uma cópia do arquivo atual e substitua `backend/data/finance_bro.db` pelo backup. A migração das categorias antigas em português cria uma cópia `*.before-category-migration-*.db` antes de substituí-las pelos nomes em inglês. A primeira migração de esquema cria uma cópia `*.before-migration-*.db`. Se você usou a primeira versão do MVP, o SQLite em `data/finance_bro.db` na raiz é copiado automaticamente para o novo caminho na primeira inicialização, preservando o arquivo original.
+O SQLite e o `.env` ficam somente na máquina que executa o backend. Pluggy recebe os dados bancários da conexão; a IA recebe os campos usados para classificação. Não execute o backend em rede pública sem autenticação. Para backup consistente no Docker, rode `docker compose --env-file .env.conf exec -T app python scripts/backup.py`; a cópia vai para `/data/backups/` no volume, com permissão restrita. Exportação, restauração e migração de bancos antigos estão em [docs/DOCKER.md](docs/DOCKER.md). Na execução nativa, o script ainda pode ser usado com `cd backend && uv run python scripts/backup.py`. Para restaurar, pare o backend, faça uma cópia do arquivo atual e substitua `backend/data/finance_bro.db` pelo backup. A migração das categorias antigas em português cria uma cópia `*.before-category-migration-*.db` antes de substituí-las pelos nomes em inglês. A primeira migração de esquema cria uma cópia `*.before-migration-*.db`. Se você usou a primeira versão do MVP, o SQLite em `data/finance_bro.db` na raiz é copiado automaticamente para o novo caminho na primeira inicialização, preservando o arquivo original.
 
 ## Verificação sem chaves
 
 `cd backend && uv run pytest -q` e `cd frontend && pnpm test && pnpm check && pnpm build`. Os testes simulam respostas da Pluggy e da IA; não fazem conexão bancária real.
 
-O servidor deve permanecer vinculado a `127.0.0.1` enquanto a aplicação não tiver autenticação. Os dados financeiros e as credenciais não devem ser expostos em uma implantação pública.
+Sem Docker, o servidor deve permanecer vinculado a `127.0.0.1` enquanto a aplicação não tiver autenticação. No Compose, o processo escuta na rede interna do container e somente `127.0.0.1` do host publica a porta. Os dados financeiros e as credenciais não devem ser expostos em uma implantação pública.

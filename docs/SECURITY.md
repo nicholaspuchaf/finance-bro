@@ -1,11 +1,12 @@
 # Segurança e privacidade: estado e próximos passos
 
-Atualizado em 20/10/2026. Este documento distingue controles presentes de recomendações para evolução. Ele não certifica o aplicativo para exposição pública.
+Atualizado em 25/10/2026. Este documento distingue controles presentes de recomendações para evolução. Ele não certifica o aplicativo para exposição pública.
 
 ## Controles presentes no MVP
 
 - `Client ID`, `Client Secret` e chave OpenAI são lidos pelo backend do `.env`; `.env` e arquivos `*.db` estão no `.gitignore`. A API devolve ao navegador apenas o Connect Token temporário necessário ao widget, nunca a API Key da Pluggy nem o Client Secret.
-- O backend tem restrição por endereço de cliente local e CORS configurado para a origem do frontend. Respostas em `/api/` recebem `Cache-Control: no-store`.
+- Na execução nativa, o backend tem restrição por endereço de cliente local (`LOCAL_ONLY=true`) e CORS configurado para a origem do frontend. No Compose, a restrição por endereço é explicitamente desativada para aceitar a bridge Docker; a porta é publicada somente em `127.0.0.1` do host. Respostas em `/api/` recebem `Cache-Control: no-store`.
+- A imagem Docker usa usuário sem root; o Compose descarta capabilities, ativa `no-new-privileges` e mantém o filesystem somente leitura, com volume gravável apenas para dados e `/tmp` temporário. O contexto de build não inclui `.env`, SQLite ou backups; credenciais são injetadas na execução. Os cabeçalhos de proxy não são confiados pelo comando Uvicorn do container.
 - A aplicação não executa classificação pela OpenAI na importação. O envio de descrição, valor e moeda ocorre quando o usuário aciona a classificação.
 - O script de backup local cria cópias do SQLite com permissões restritas. O botão de olho mascara valores na interface.
 

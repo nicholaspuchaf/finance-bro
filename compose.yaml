@@ -1,0 +1,33 @@
+name: finance-bro
+
+services:
+  app:
+    build:
+      context: .
+      target: runtime
+    ports:
+      - "127.0.0.1:${FINANCE_BRO_PORT:-808}:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: sqlite:////data/finance_bro.db
+      FRONTEND_DIST: /app/frontend/dist
+      FRONTEND_ORIGIN: http://localhost:${FINANCE_BRO_PORT:-808}
+      # Docker forwards connections through its bridge, not container loopback.
+      # Host access is limited by the explicit 127.0.0.1 port binding above.
+      LOCAL_ONLY: "false"
+    volumes:
+      - finance-data:/data
+    init: true
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  finance-data:

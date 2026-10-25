@@ -1,10 +1,12 @@
 # Estado do projeto e evolução de system design
 
-Atualizado em 20/10/2026. Este documento descreve o checkout atual; funcionalidades listadas como futuras ainda não estão implementadas.
+Atualizado em 25/10/2026. Este documento descreve o checkout atual; funcionalidades listadas como futuras ainda não estão implementadas.
 
 ## Escopo e arquitetura atual
 
-Finance Bro é um gerenciador financeiro de uso pessoal e local. O frontend está em `frontend/` (Svelte 5, Vite, pnpm), o backend em `backend/` (FastAPI, Python, uv) e os dados em `backend/data/finance_bro.db` (SQLite via SQLAlchemy). Não há autenticação nem suporte multiusuário. A API e o servidor de desenvolvimento são iniciados em `127.0.0.1`; o backend rejeita clientes que não apareçam como loopback e restringe CORS à origem configurada.
+Finance Bro é um gerenciador financeiro de uso pessoal e local. O frontend está em `frontend/` (Svelte 5, Vite, pnpm), o backend em `backend/` (FastAPI, Python, uv) e os dados em `backend/data/finance_bro.db` (SQLite via SQLAlchemy). Não há autenticação nem suporte multiusuário. A execução padrão passou a usar Docker Compose; o antigo lançador `dev.py` foi removido. Na execução direta do backend, a restrição a clientes loopback continua habilitada por padrão.
+
+Também há distribuição por Docker Compose: um container baseado em Debian Bookworm slim com um processo FastAPI que serve API e frontend compilado. Node/pnpm/uv ficam nos estágios de build. O Compose publica `127.0.0.1:808`, configurável por `FINANCE_BRO_PORT` em `.env.conf`, e persiste `/data/finance_bro.db` em volume nomeado, separado do banco nativo. `LOCAL_ONLY=false` nesse modo aceita a bridge Docker; o controle de exposição fica na publicação loopback do host. O container usa usuário sem root, filesystem somente leitura, healthcheck e um worker. Detalhes e comparação entre um/dois containers: [DOCKER.md](DOCKER.md). Isso prepara a distribuição, mas não implementa autenticação, hospedagem pública ou banco gerenciado.
 
 Fluxo principal: conectar bancos no Meu Pluggy, criar um item do conector MeuPluggy na aplicação Pluggy, importar o Item ID completo ou usar o widget, consultar manualmente contas e transações e salvar uma cópia local. A integração do backend usa `httpx`; o frontend usa `pluggy-connect-sdk`. O backend pagina `GET /v2/transactions` por cursor, sem recorte de datas próprio: a janela histórica efetiva depende do que a Pluggy e a instituição disponibilizam. Não há sincronização automática agendada.
 

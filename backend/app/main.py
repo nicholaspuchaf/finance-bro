@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.categories import CATEGORY_GROUPS
 from app.config import get_settings
 from app.database import get_session
+from app.frontend import mount_frontend
 from app.migrations import initialize_database
 from app.models import Account, BankConnection, CategoryRule, Tag, Transaction, transaction_tags, utc_now
 from app.schemas import CATEGORIES, CategoryRuleCreate, ConnectionRead, TagCreate, TagRead, TransactionCreate, TransactionRead, TransactionUpdate
@@ -39,14 +40,15 @@ app.add_middleware(
 
 
 class LocalOnlyMiddleware:
-    def __init__(self, inner):
+    def __init__(self, inner, local_only: bool = True):
         self.inner = inner
+        self.local_only = local_only
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
             return await self.inner(scope, receive, send)
         client = scope.get("client")
-        if client and client[0] not in {"127.0.0.1", "::1", "localhost", "testclient"}:
+        if self.local_only and client and client[0] not in {"127.0.0.1", "::1", "localhost", "testclient"}:
             return await JSONResponse(status_code=403, content={"detail": "API disponível apenas localmente."})(scope, receive, send)
 
         async def send_with_no_store(message):
@@ -57,7 +59,7 @@ class LocalOnlyMiddleware:
         await self.inner(scope, receive, send_with_no_store)
 
 
-app.add_middleware(LocalOnlyMiddleware)
+app.add_middleware(LocalOnlyMiddleware, local_only=settings.local_only)
 
 
 @app.get("/api/health")
@@ -467,3 +469,7 @@ async def sync_item(item_id: str, session: Session = Depends(get_session)):
     except Exception:
         session.rollback()
         raise
+
+
+# Keep this last so /api/* and API documentation take precedence over static files.
+mount_frontend(app, settings.frontend_dist)

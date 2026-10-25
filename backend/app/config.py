@@ -10,6 +10,8 @@ ROOT_DIR = BACKEND_DIR.parent
 
 class Settings(BaseSettings):
     database_url: str = f"sqlite:///{BACKEND_DIR / 'data' / 'finance_bro.db'}"
+    frontend_dist: Path | None = None
+    local_only: bool = True
     frontend_origin: str = "http://localhost:5173"
     pluggy_client_id: str = ""
     pluggy_client_secret: str = ""
